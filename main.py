@@ -1,8 +1,5 @@
-import json
-import os.path
 from math import *
 import pygame
-import xml.etree.ElementTree as ET
 
 
 def vec_length(vec):
@@ -12,18 +9,17 @@ def vec_length(vec):
 def vec_norm(vec):
     length = vec_length(vec)
     if length == 0:
-        return (0,0,0)
+        return (0, 0, 0)
     norm = ( vec[0]/length , vec[1]/length , vec[2]/length )
     return norm
 
 
-def cross_product(v1,v2):
+def cross_product(v1, v2):
     return (v1[1]*v2[2]-v1[2]*v2[1] , v1[2]*v2[0]-v1[0]*v2[2] , v1[0]*v2[1]-v1[1]*v2[0] )
 
 
 def dot_product(v1, v2):
     ret = 0.0
-
     for i in range(len(v1)):
         ret += v1[i]*v2[i]
 
@@ -50,12 +46,10 @@ CENTER = (SCREEN_SIZE[0]//2,SCREEN_SIZE[1]//2)
 NOTE = 5
 
 
-def prism(n,d1=2,d2=2,height=2):
+def prism(n, d1 = 2, d2 = 2, height = 2):
     coords = []
     for i in range(n):
         angle = (2*pi/n)*i;
-        #x_low=0
-        #y_low=0
         x_low = cos(angle) * d1
         y_low = sin(angle) * d1
         coords.append( (x_low,y_low,-height/2) )
@@ -64,8 +58,6 @@ def prism(n,d1=2,d2=2,height=2):
         x_high=cos(angle)*d2
         y_high=sin(angle)*d2
         coords.append( (x_high,y_high,height/2) )
-
-
     faces = []
     for j in range(n):
         if j == (n-1):
@@ -106,7 +98,6 @@ def parabola_3d(n,h):
     for j in range(n):
         if j == (n-1):
             faces += [ [j,0, n, 2*n-1] ]
-            #continue
         else:
             faces += [ [j,j+1,j+n+1,j+n] ]
     return vertices, faces
@@ -118,10 +109,12 @@ MODELS = [
 CURRENT_MODEL = 0
 VERTICES, FACES, NAME = MODELS[CURRENT_MODEL]
 
+
 def next_model(direction):
     global VERTICES,FACES,CURRENT_MODEL, NAME
     CURRENT_MODEL = (CURRENT_MODEL + direction) % len(MODELS)
     VERTICES, FACES, NAME = MODELS[CURRENT_MODEL]
+
 
 def normal(face):
     VERTICES=MODELS[CURRENT_MODEL][0]
@@ -131,6 +124,7 @@ def normal(face):
     vec1=(ver2[0]-ver1[0],ver2[1]-ver1[1],ver2[2]-ver1[2])
     vec2=(ver3[0]-ver2[0],ver3[1]-ver2[1],ver3[2]-ver2[2])
     return vec_norm(cross_product(vec1, vec2))
+
 
 def is_visible_face(face):
     norm = normal(face)
@@ -150,6 +144,7 @@ def filter_faces():
             invisible += [face]
     return visible, invisible
 
+
 def matrix_rotate_x(angle):
     MX = [
         [1,0,0],
@@ -157,6 +152,7 @@ def matrix_rotate_x(angle):
         [0,sin(angle),cos(angle)]
     ]
     return MX
+
 
 def matrix_rotate_y(angle):
     MY = [
@@ -166,6 +162,7 @@ def matrix_rotate_y(angle):
     ]
     return MY
 
+
 def matrix_rotate_z(angle):
     MZ = [
         [cos(angle),-sin(angle),0],
@@ -173,6 +170,7 @@ def matrix_rotate_z(angle):
         [0,0,1]
     ]
     return MZ
+
 
 def rotate(angle, rot):
     m = rot(angle)
@@ -214,6 +212,7 @@ def draw_wireframe_face(screen, color, face):
         screen_ortho_b = to_scr(ortho_b)
         pygame.draw.line(screen, color, screen_ortho_a, screen_ortho_b ,5)
 
+
 def draw_shaded_face(screen, color, face):
     points = []
     for i in range(len(face)):
@@ -221,6 +220,7 @@ def draw_shaded_face(screen, color, face):
     very_new_color = turn_to_color(color , face)
     pygame.draw.polygon(screen, very_new_color, points)
     return
+
 
 def turn_to_color(base_color, face):
     face_normal = normal(face)
@@ -249,6 +249,7 @@ def draw_vec_center(screen, color, vec):
     pygame.draw.line(screen, color, CENTER, (SCREEN_SIZE[0]//2+x,SCREEN_SIZE[1]//2-y),3)
     return
 
+
 def draw_vert_index(screen, font):
     if not SHOW_INDICES:
         return
@@ -256,6 +257,7 @@ def draw_vert_index(screen, font):
         x = to_scr(orthogonal(VERTICES[i]))
         pic = font.render("%d"%i, False, BLACK)
         screen.blit(pic, x)
+
 
 def draw_normals(screen):
     if not SHOW_NORMALS:
@@ -266,43 +268,7 @@ def draw_normals(screen):
         norm = (mid[0]+norm[0],mid[1]+norm[1], mid[2]+norm[2])
         pygame.draw.line(screen, BLACK, to_scr(mid), to_scr(norm), 2)
     return
-'''
-def saving_configuration(SCALE, NOTE):
-    with open("saving_file", "w") as f_out:
-        f_out.write(json.dumps({"SCALE":SCALE , "NOTE":NOTE}))
 
-
-def installing_configuration():
-    global SCALE, NOTE
-    if not os.path.exists('saving_file'):
-        return
-    with open("saving_file", "r") as f_input:
-        per = json.loads(f_input.read())
-        SCALE = per["SCALE"]
-        NOTE = per["NOTE"]
-
-    MODELS[0] = (*parabola_3d(NOTE, 2), "Parabola %s"%NOTE)
-    next_model(0)
-
-    return
-
-def saving_configuration_xml(SCALE, NOTE):
-    with open("saving_file.xml", "w") as f_out:
-        f_out.write("<config><SCALE>%s</SCALE><NOTE>%s</NOTE></config>"%(SCALE,NOTE))
-
-def installing_configuration_xml():
-    global SCALE, NOTE
-    if not os.path.exists('saving_file.xml'):
-        return
-    with open("saving_file.xml", "r") as f_input:
-        per = ET.fromstring(f_input.read())
-        SCALE = int(per.find("SCALE").text)
-        NOTE = int(per.find("NOTE").text)
-    MODELS[0] = (*parabola_3d(NOTE, 2), "Parabola %s" % NOTE)
-    next_model(0)
-
-    return
-'''
 
 def main():
     global SCALE, NOTE, SHOW_INDICES, SHOW_NORMALS
@@ -311,7 +277,6 @@ def main():
     screen = pygame.display.set_mode((1024,800))
     font = pygame.font.SysFont('Sans', 32)
     title_font = pygame.font.SysFont('Sans', 48, bold=True)
-    #installing_configuration_xml()
 
     run = True
     x_rotation = False
@@ -375,16 +340,11 @@ def main():
         screen.blit(title,(0,0))
         pygame.draw.circle(screen, RED, to_scr((0,0,0)), 3)
         visible, invisible = filter_faces()
-        #draw_wireframe(screen, LIGHT_GRAY, invisible)
-        #draw_wireframe(screen, GREEN, visible)
         draw_shaded(screen, GREEN, visible)
         draw_vert_index(screen, font)
         draw_normals(screen)
         pygame.display.flip()
-        #saving_configuration_xml(SCALE, NOTE)
     pygame.quit()
-
-
 
 
 if __name__=='__main__':
